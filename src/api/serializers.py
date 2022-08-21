@@ -1,17 +1,6 @@
 from rest_framework import serializers
-from .models import PaymentRequest, PaymentResponse, StripeLog, APILog, APIRequest
-
-
-class PaymentRequestSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PaymentRequest
-        fields = ('card_number', 'card_expiry_month', 'card_expiry_year', 'card_cvv', 'amount_in_cents')
-
-
-class PaymentResponseSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = PaymentResponse
-        fields = ('transaction_id', 'result', 'errors')
+from .models import StripeLog, APILog
+from api.utils import mask_card_number, mask_card_cvv
 
 
 class StripeLogSerializer(serializers.ModelSerializer):
@@ -25,8 +14,11 @@ class APILogSerializer(serializers.ModelSerializer):
         model = APILog
         fields = '__all__'
 
-
-class APIRequestSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = APIRequest
-        fields = '__all__'
+    def create(self, validated_data):
+        instance = APILog(**validated_data)
+        if 'card_number' in instance.data:
+            instance.data['card_number'] = mask_card_number(instance.data['card_number'])
+        if 'card_cvv' in instance.data:
+            instance.data['card_cvv'] = mask_card_cvv(instance.data['card_cvv'])
+        instance.save()
+        return instance
